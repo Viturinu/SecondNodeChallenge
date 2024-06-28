@@ -6,7 +6,7 @@ export async function checkSessionUserId(request: FastifyRequest, reply: Fastify
 
     if (!sessionId) {
         return reply.status(401).send({
-            error: "Unauthorized"
+            error: "Unauthorized - you are not known by this server"
         })
     }
 
@@ -18,7 +18,7 @@ export async function checkSessionUserId(request: FastifyRequest, reply: Fastify
 
     if (user[0].session_id !== sessionId) {
         return reply.status(401).send({
-            error: "Unauthorized - User not recognized"
+            error: "Unauthorized - User not recognized | mismatch register"
         });
     }
 }

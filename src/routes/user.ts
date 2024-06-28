@@ -3,6 +3,7 @@ import { z } from "zod"
 import { knex } from "../database"
 import { checkSessionUserId } from "../middlewares/check-session-user-id"
 import crypto from "node:crypto"
+import { sessionGetter } from "../util/session_getter"
 
 function sha256(data: string) {
     return crypto.createHash('sha256').update(data, 'utf8').digest('hex');
@@ -19,13 +20,7 @@ export async function userRoute(app: FastifyInstance) { //isso aqui é um plugin
         ,
         async (request, reply) => {
 
-            const { sessionId } = request.cookies
-
-            const user = await knex('user')
-                .where("session_id", sessionId)
-                .select();
-
-            return user;
+            return sessionGetter(request);
             //return reply.status(201).send() // analogamente no mysql temos que colocar INSERT () FROM RETURNING XXXX (Nem sabia desse returning)
         })
 
@@ -49,11 +44,10 @@ export async function userRoute(app: FastifyInstance) { //isso aqui é um plugin
                 path: '/', //determina onde o cookie será enviado; neste caso, em qualquer requisição feita ao / (todo dominio), este cookie será enviado/ se fosse /admin, seria enviado apenas para requisições feitas dentro do /admin (escopo do cookie)
                 // expires: new Date('2024-12-01T08:00:00')
                 maxAge: 60 * 60 * 24 * 7, // segundos //uma semana ele vai expirar //alternativa pra forma acima, que é mais chata pora colocar um Date certinho
-
             })
         }
 
-        const encryptedPassword = sha256(password);
+        const encryptedPassword = sha256(password);  //pra não termos acesso às senhas dos usuários 
 
         await knex('user').insert({
             id: crypto.randomUUID(),

@@ -3,6 +3,7 @@ import { z } from "zod";
 import crypto from "node:crypto"
 import { checkSessionUserId } from "../middlewares/check-session-user-id";
 import { knex } from "../database";
+import { sessionGetter } from "../util/session_getter";
 
 export async function mealRoute(app: FastifyInstance) {
 
@@ -16,11 +17,7 @@ export async function mealRoute(app: FastifyInstance) {
             onDiet: z.boolean()
         })
 
-        let sessionId = request.cookies.sessionId;
-
-        const user = await knex("user").where({
-            session_id: sessionId
-        }).select(); //vai encontrar, já foi feito teste pelo preHandler
+        const user = await sessionGetter(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
 
@@ -54,11 +51,7 @@ export async function mealRoute(app: FastifyInstance) {
 
         const { name, description, time, onDiet } = mealSchema.parse(request.body);
 
-        let sessionId = request.cookies.sessionId;
-
-        const user = await knex("user").where({
-            session_id: sessionId
-        }).select(); //vai encontrar, já foi feito teste pelo preHandler
+        const user = await sessionGetter(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
         // const dateHelper = new Date(time);
@@ -82,11 +75,7 @@ export async function mealRoute(app: FastifyInstance) {
 
         const { id } = bodySchema.parse(request.body)
 
-        let sessionId = request.cookies.sessionId;
-
-        const user = await knex("user").where({
-            session_id: sessionId
-        }).select(); //vai encontrar, já foi feito teste pelo preHandler
+        const user = await sessionGetter(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
         // const dateHelper = new Date(time);
@@ -112,11 +101,7 @@ export async function mealRoute(app: FastifyInstance) {
 
     app.get("/", async (request) => {
 
-        let sessionId = request.cookies.sessionId;
-
-        const user = await knex("user").where({
-            session_id: sessionId
-        }).select(); //vai encontrar, já foi feito teste pelo preHandler
+        const user = await sessionGetter(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
 
@@ -133,9 +118,7 @@ export async function mealRoute(app: FastifyInstance) {
 
         let sessionId = request.cookies.sessionId;
 
-        const user = await knex("user").where({
-            session_id: sessionId
-        }).select(); //vai encontrar, já foi feito teste pelo preHandler
+        const user = await sessionGetter(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
 
@@ -151,6 +134,53 @@ export async function mealRoute(app: FastifyInstance) {
         }).select()
 
         return meals;
+
+        // reply.status(201).send("Refeição criada com sucesso");
+    })
+
+    app.get("/statistics", async (request) => {
+
+        const user = await sessionGetter(request);
+
+        const totalMeals = await knex("meal").where({
+            user_id: user[0].id
+        }).select().count().first();
+
+        const OnDietMeals = await knex.table("meal").where({
+            user_id: user[0].id,
+            onDiet: true
+        }).count().first();
+
+        const offDietMeals = await knex.table("meal").where({
+            user_id: user[0].id,
+            onDiet: false
+        }).count().first();
+
+        const allMeals = await knex.table("meal").where({
+            user_id: user[0].id,
+        }).select();
+
+        let max = 0;
+        let sum = 0;
+
+        allMeals.forEach(item => {
+            if (item.onDiet) {
+                sum++;
+                if (sum > max) max = sum;
+            }
+            else {
+                sum = 0;
+            }
+        })
+
+        return {
+            totalMeals,
+            OnDietMeals,
+            offDietMeals,
+            sequence: {
+                sum
+            }
+        };
 
         // reply.status(201).send("Refeição criada com sucesso");
     })
