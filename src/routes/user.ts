@@ -3,7 +3,7 @@ import { z } from "zod"
 import { knex } from "../database"
 import { checkSessionUserId } from "../middlewares/check-session-user-id"
 import crypto from "node:crypto"
-import { sessionGetter } from "../util/session_getter"
+import { userGetterBySession } from "../util/user-getter-by-session"
 
 function sha256(data: string) {
     return crypto.createHash('sha256').update(data, 'utf8').digest('hex');
@@ -18,9 +18,9 @@ export async function userRoute(app: FastifyInstance) { //isso aqui é um plugin
             preHandler: [checkSessionUserId]
         }
         ,
-        async (request, reply) => {
+        async (request) => {
 
-            return sessionGetter(request);
+            return userGetterBySession(request);
             //return reply.status(201).send() // analogamente no mysql temos que colocar INSERT () FROM RETURNING XXXX (Nem sabia desse returning)
         })
 

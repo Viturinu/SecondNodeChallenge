@@ -3,7 +3,7 @@ import { z } from "zod";
 import crypto from "node:crypto"
 import { checkSessionUserId } from "../middlewares/check-session-user-id";
 import { knex } from "../database";
-import { sessionGetter } from "../util/session_getter";
+import { userGetterBySession } from "../util/user-getter-by-session";
 
 export async function mealRoute(app: FastifyInstance) {
 
@@ -17,7 +17,7 @@ export async function mealRoute(app: FastifyInstance) {
             onDiet: z.boolean()
         })
 
-        const user = await sessionGetter(request);
+        const user = await userGetterBySession(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
 
@@ -51,7 +51,7 @@ export async function mealRoute(app: FastifyInstance) {
 
         const { name, description, time, onDiet } = mealSchema.parse(request.body);
 
-        const user = await sessionGetter(request);
+        const user = await userGetterBySession(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
         // const dateHelper = new Date(time);
@@ -75,7 +75,7 @@ export async function mealRoute(app: FastifyInstance) {
 
         const { id } = bodySchema.parse(request.body)
 
-        const user = await sessionGetter(request);
+        const user = await userGetterBySession(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
         // const dateHelper = new Date(time);
@@ -101,7 +101,7 @@ export async function mealRoute(app: FastifyInstance) {
 
     app.get("/", async (request) => {
 
-        const user = await sessionGetter(request);
+        const user = await userGetterBySession(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
 
@@ -116,9 +116,7 @@ export async function mealRoute(app: FastifyInstance) {
 
     app.get("/:id", async (request) => {
 
-        let sessionId = request.cookies.sessionId;
-
-        const user = await sessionGetter(request);
+        const user = await userGetterBySession(request);
 
         // if(user.length === 0) reply.status(201).send("User not found") //Não precisa disso, pois já fazemos no preHandler
 
@@ -140,21 +138,21 @@ export async function mealRoute(app: FastifyInstance) {
 
     app.get("/statistics", async (request) => {
 
-        const user = await sessionGetter(request);
+        const user = await userGetterBySession(request);
 
         const totalMeals = await knex("meal").where({
             user_id: user[0].id
-        }).select().count().first();
+        }).count('id', { as: 'total' }).first();
 
         const OnDietMeals = await knex.table("meal").where({
             user_id: user[0].id,
             onDiet: true
-        }).count().first();
+        }).count("id", { as: "onDietMealsNumber" }).first();
 
         const offDietMeals = await knex.table("meal").where({
             user_id: user[0].id,
             onDiet: false
-        }).count().first();
+        }).count("id", { as: "offDietMealsNumber" }).first();
 
         const allMeals = await knex.table("meal").where({
             user_id: user[0].id,
@@ -174,12 +172,10 @@ export async function mealRoute(app: FastifyInstance) {
         })
 
         return {
-            totalMeals,
-            OnDietMeals,
-            offDietMeals,
-            sequence: {
-                sum
-            }
+            totalMeals: totalMeals?.total,
+            OnDietMeals: OnDietMeals?.onDietMealsNumber,
+            offDietMeals: offDietMeals?.offDietMealsNumber,
+            sequence: sum
         };
 
         // reply.status(201).send("Refeição criada com sucesso");
